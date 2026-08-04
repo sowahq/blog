@@ -8,17 +8,21 @@ slug: steamworks-le-jeu-vous-croit-sur-parole
 published: true
 ---
 
+# Introduction
+
 Vous avez déjà vu un jeu afficher « contenu additionnel non détecté » et vous êtes demandé où il allait chercher cette information ? La réponse est plus décevante qu'on ne l'imagine : il la demande à une DLL posée dans son propre dossier, et il fait confiance à ce qu'elle lui répond.
 
 Pas de vérification en ligne, pas de signature, pas de challenge cryptographique. Un appel de fonction, une valeur de retour, et le jeu passe à autre chose.
 
 C'est un sujet dont on parle assez peu parce qu'il n'y a rien de spectaculaire à casser — il n'y a rien de cassé, justement. Il y a une API qui fait exactement ce qu'elle documente, et des jeux qui lui font confiance pour un usage auquel elle n'a jamais prétendu servir. Voyons pourquoi.
 
-## 1. Comment un jeu demande « est-ce que je possède ça ? »
+⚠️ Ce post n'est pas un mode d'emploi pour débloquer des DLC. C'est une analyse technique de ce que garantit — et surtout de ce que ne garantit pas — une vérification de propriété côté client, et de la façon correcte de la faire. ⚠️
+
+# 1. Comment un jeu demande « est-ce que je possède ça ? »
 
 Steamworks expose ça par deux chemins. Ce qui les distingue, ce n'est pas leur âge, c'est **d'où sort le pointeur d'interface** — et ça va tout changer pour la suite.
 
-### 1.1 Par la factory exportée
+## 1.1 Par la factory exportée
 
 Le cas le plus fréquent. Un jeu C++ moderne écrit simplement :
 
@@ -38,7 +42,7 @@ SteamAPI_ISteamApps_BIsDlcInstalled(SteamApps(), 1234560);
 
 Même factory, même pointeur. Pour nous, c'est un seul et même chemin.
 
-### 1.2 Par ISteamClient
+## 1.2 Par ISteamClient
 
 L'autre voie passe par l'interface racine :
 
@@ -53,11 +57,11 @@ Notez la différence : ici, `ISteamApps` n'est **pas** obtenu par la factory exp
 
 ![Les deux chemins pour atteindre ISteamApps](/blog-img/steamworks-le-jeu-vous-croit-sur-parole/01-deux-chemins.png)
 
-## 2. Le vrai problème : tout se passe chez vous
+# 2. Le vrai problème : tout se passe chez vous
 
 Dans les deux cas, la question et la réponse voyagent entre deux morceaux de code chargés dans **le même processus**, le vôtre. Aucun paquet réseau, aucune frontière de privilège. Juste un `call` et un `ret`.
 
-### 2.1 Une interface Steamworks, c'est une vtable
+## 2.1 Une interface Steamworks, c'est une vtable
 
 `ISteamApps` est une classe C++ abstraite. Concrètement, en mémoire, un pointeur d'interface pointe vers une structure dont le premier champ est un pointeur vers une table de pointeurs de fonctions — la vtable.
 
@@ -74,30 +78,37 @@ call qword ptr [rax+38h]  ; slot 7 (7 * 8 octets) = BIsDlcInstalled
 
 Tout est là. `[rax+38h]`, c'est une case mémoire inscriptible dans notre propre processus. Si on y écrit l'adresse d'une autre fonction, le jeu appellera cette autre fonction, sans jamais s'en apercevoir. Il ne vérifie pas où pointe son slot 7 — pourquoi le ferait-il, c'est le compilateur qui a généré cet accès.
 
-### 2.2 Le versioning, ou pourquoi les numéros de slot comptent
+## 2.2 Le versioning, ou pourquoi les numéros de slot comptent
 
 Petit détail qui a son importance : les index de slot dépendent de la version de l'interface. `STEAMAPPS_INTERFACE_VERSION008` et `STEAMAPPS_INTERFACE_VERSION005` n'ont pas la même disposition, parce que Valve ajoute des méthodes au fil des versions.
 
+Et pas seulement : elle en retire aussi. `ISteamUtils::GetAppID` était en slot 9 tant que `GetCSERIPPort` existait juste avant ; cette méthode a disparu des versions récentes, et tout ce qui la suivait a reculé d'un cran. Un shim qui code en dur le mauvais index n'appelle pas « la mauvaise réponse », il appelle une fonction qui n'a rien à voir, avec les arguments d'une autre — c'est-à-dire un crash.
+
 D'où la chaîne de version passée en paramètre aux factories. C'est aussi ce qui nous permet de savoir à quelle interface on a affaire : on nous la donne, gratuitement, à chaque appel.
 
-## 3. Construire le shim
+# 3. Construire le shim
 
 ![Le shim dans le processus du jeu](/blog-img/steamworks-le-jeu-vous-croit-sur-parole/03-shim-en-place.png)
 
 L'idée tient en une phrase : **se placer entre les factories et le jeu**. On laisse la vraie DLL de Valve fabriquer ses interfaces — elle fait tout le travail réel, on n'a aucune envie de la réimplémenter — et on repeint quelques slots au passage.
 
-### 3.1 Intercepter les usines
+## 3.1 Intercepter les usines
 
-On accroche les exports de la vraie `steam_api64.dll` avec MinHook :
+Deux exports de la vraie `steam_api64.dll` nous intéressent, et il faut les distinguer :
+
+- `SteamInternal_FindOrCreateUserInterface(HSteamUser, const char*)` : c'est elle que finissent par appeler `SteamApps()`, `SteamUtils()` et les autres accesseurs ;
+- `SteamInternal_CreateInterface(const char*)` : celle qui sert notamment à obtenir `ISteamClient`, l'interface racine de la section 1.2.
+
+On les accroche avec MinHook. Le principe est le même dans les deux cas :
 
 ```cpp
-static void* (__cdecl* real_CreateInterface)(const char*) = nullptr;
+static void* (__cdecl* real_FindOrCreateUserInterface)(int32_t, const char*) = nullptr;
 
-static void* __cdecl my_CreateInterface(const char* version) {
-    auto* iface = real_CreateInterface(version);   // la vraie usine tourne
+static void* __cdecl my_FindOrCreateUserInterface(int32_t user, const char* version) {
+    auto* iface = real_FindOrCreateUserInterface(user, version);  // la vraie usine tourne
 
     if (iface && version)
-        on_new_interface(iface, version);          // on inspecte le résultat
+        on_new_interface(iface, version);                         // on inspecte le résultat
 
     return iface;
 }
@@ -105,7 +116,7 @@ static void* __cdecl my_CreateInterface(const char* version) {
 
 Un détail qui n'est pas anodin : au moment où notre DLL est chargée, `steam_api64.dll` n'est peut-être pas encore mappée. L'ordre de chargement ne nous appartient pas. Et faire quoi que ce soit de sérieux depuis `DllMain` est une mauvaise idée — on y est sous le loader lock, où beaucoup d'appels Win32 se comportent mal ou se figent.
 
-La solution la moins bête : lancer un thread qui attend l'apparition du module, avec une limite.
+La solution habituelle : lancer un thread qui attend l'apparition du module, avec une limite.
 
 ```cpp
 static DWORD WINAPI wait_for_steam_api(LPVOID) {
@@ -120,7 +131,7 @@ static DWORD WINAPI wait_for_steam_api(LPVOID) {
 }
 ```
 
-### 3.2 Le piège de la convention d'appel
+## 3.2 Le piège de la convention d'appel
 
 Là, on tombe sur un truc rigolo. Les méthodes d'une interface C++ sont en `__thiscall` : le pointeur `this` arrive dans un registre. Mais MinHook nous donne une adresse brute, et `__thiscall` n'est pas déclarable sur une fonction libre en C++.
 
@@ -138,9 +149,9 @@ Deux macros, et on n'y pense plus :
 #endif
 ```
 
-### 3.3 Repeindre les slots
+## 3.3 Repeindre les slots
 
-Le hook lui-même est d'une banalité confondante :
+Le hook lui-même tient en quelques lignes :
 
 ```cpp
 static bool (__fastcall* real_BIsDlcInstalled)(THISCALL(uint32_t)) = nullptr;
@@ -170,23 +181,37 @@ void on_new_interface(void* iface, std::string_view version) {
 }
 ```
 
-## 4. Combien de hooks, au juste ?
+# 4. Combien de hooks, au juste ?
 
-Très peu, et c'est instructif de voir lesquels :
+Très peu. Et les numéros de slot ne se devinent pas : ils se lisent dans le header du SDK, où l'ordre de déclaration des méthodes virtuelles *est* l'ordre de la vtable.
 
-| Interface | Slot | Méthode | Rôle |
-|---|---|---|---|
-| `ISteamApps` | 6 | `BIsSubscribedApp` | possède-t-il l'app ? |
-| `ISteamApps` | 7 | `BIsDlcInstalled` | possède-t-il le DLC ? |
-| `ISteamUtils` | 9 | `GetAppID` | quel jeu croit-il être ? |
-| `ISteamClient` | 9 | `GetISteamUtils` | plomberie |
-| `ISteamClient` | 15 | `GetISteamApps` | plomberie |
+```cpp
+// isteamapps.h, STEAMAPPS_INTERFACE_VERSION008
+virtual bool BIsSubscribed() = 0;                     // slot 0
+virtual bool BIsLowViolence() = 0;                    // 1
+virtual bool BIsCybercafe() = 0;                      // 2
+virtual bool BIsVACBanned() = 0;                      // 3
+virtual const char* GetCurrentGameLanguage() = 0;     // 4
+virtual const char* GetAvailableGameLanguages() = 0;  // 5
+virtual bool BIsSubscribedApp(AppId_t appID) = 0;     // 6
+virtual bool BIsDlcInstalled(AppId_t appID) = 0;      // 7
+```
+
+Aucune magie, donc : on compte. Les index ci-dessous valent pour les versions d'interface indiquées — dans une autre version, recomptez dans le header correspondant plutôt que de me croire.
+
+| Interface | Version | Slot | Méthode | Rôle |
+|---|---|---|---|---|
+| `ISteamApps` | 008 | 6 | `BIsSubscribedApp` | possède-t-il l'app ? |
+| `ISteamApps` | 008 | 7 | `BIsDlcInstalled` | possède-t-il le DLC ? |
+| `ISteamUtils` | 009 | 9 | `GetAppID` | quel jeu croit-il être ? |
+| `ISteamClient` | 017 | 9 | `GetISteamUtils` | plomberie |
+| `ISteamClient` | 017 | 15 | `GetISteamApps` | plomberie |
 
 Trois hooks font le travail. Les deux derniers ne servent qu'à rattraper le chemin de la section 1.2 — ces interfaces-là ne passent jamais par les factories, il faut les attraper à leur sortie d'usine.
 
 C'est peu. Et c'est bien le problème : la surface à couvrir pour faire mentir un jeu sur ce qu'il possède tient en une poignée de slots.
 
-## 5. Le même principe, partout
+# 5. Le même principe, partout
 
 Deux slots dans une vtable, sur une API précise : vu comme ça, c'est anecdotique. Sauf que le schéma ne change jamais, et c'est ce qui rend le sujet intéressant. La grande majorité des cracks « classiques » reposent sur cette seule propriété.
 
@@ -208,9 +233,9 @@ L'asymétrie de coût explique le reste. Côté éditeur, produire une garantie 
 
 Et symétriquement, ce qui résiste résiste toujours pour la même raison : la réponse n'est pas produite chez le joueur, ou bien ce qui est protégé n'est pas sur sa machine. Un DLC dont les fichiers ne sont pas livrés ne se débloque pas avec un booléen — il n'y a rien à débloquer. Une logique de jeu qui vit sur un serveur autoritatif ne peut pas se mentir à elle-même.
 
-## 6. La contre-mesure existe, et elle est documentée
+# 6. La contre-mesure existe, et elle est documentée
 
-Le plus amusant dans cette histoire, c'est que rien de ce que je viens de décrire n'est un secret. La documentation Steamworks de Valve dit noir sur blanc que les vérifications côté client sont indicatives et qu'il ne faut pas s'y fier pour du contrôle d'accès.
+Rien de ce que je viens de décrire n'est un secret. La documentation Steamworks de Valve dit noir sur blanc que les vérifications côté client sont indicatives et qu'il ne faut pas s'y fier pour du contrôle d'accès.
 
 La bonne façon de faire tient en deux étapes :
 
@@ -225,7 +250,7 @@ Un shim comme celui-ci ne peut rien contre ça. Il ne casse pas de crypto — il
 
 Évidemment, ça suppose d'avoir un serveur, ce qui pour un jeu solo est une contrainte réelle. C'est tout le débat : la vérification côté client n'est pas un oubli, c'est un compromis assumé. Simplement, il faut savoir qu'on l'assume.
 
-## 7. Et le DRM dans tout ça ?
+# 7. Et le DRM dans tout ça ?
 
 On me posera la question, alors autant y répondre : non, ce qui précède n'a rien à voir avec le SteamStub, le wrapper de protection que Valve applique optionnellement aux exécutables.
 
@@ -235,10 +260,10 @@ Sa faiblesse structurelle est celle de tous les packers de ce type, et elle est 
 
 Je m'arrête là volontairement. Décrire l'architecture d'une protection relève de l'analyse ; fournir de quoi la contourner, c'est autre chose, et ce n'est pas l'objet de ce blog. La faiblesse des vérifications côté client, elle, est documentée par l'éditeur lui-même — on est sur un tout autre terrain.
 
-## 8. Ce qu'il faut en retenir
+# Conclusion
 
-Une frontière de sécurité, c'est un endroit où les deux côtés ne se font pas confiance. Un appel de vtable dans votre propre processus, ce n'est pas ça. C'est un appel de fonction entre deux morceaux de code qui partagent tout : le même espace d'adressage, les mêmes droits, la même mémoire inscriptible.
+Une frontière de sécurité, c'est un endroit où les deux côtés ne se font pas confiance. Un appel de vtable dans votre propre processus, ce n'est pas ça — et c'est pour cette seule raison que trois hooks suffisent. Un jeu qui vérifie ses droits côté client n'a pas une protection faible : il a une préférence, et il espère qu'on la respecte.
 
-Le shim ne fait rien d'astucieux. Il écrit une adresse dans une case mémoire. Ce qui rend la chose intéressante, ce n'est pas la technique, c'est ce qu'elle révèle du modèle de menace : un jeu qui vérifie ses droits côté client n'a pas une protection faible, il n'a **pas** de protection. Il a une préférence, et il espère qu'on la respecte.
+La seule question qui vaut, quand on conçoit ce genre de vérification, est donc toujours la même : **qui produit la réponse, et est-ce que je peux la vérifier sans faire confiance à celui qui me l'apporte ?**
 
-Voilà, j'espère que ce tour d'horizon vous aura éclairé sur un coin de Steamworks dont on parle assez peu. Les extraits ci-dessus sont volontairement réduits à l'os : le sujet n'est pas l'outil, c'est ce que son existence dit de l'API.
+Voilà, j'espère que ce tour d'horizon vous aura éclairé sur un coin de Steamworks dont on parle assez peu. Les extraits de code sont volontairement réduits à l'os : le sujet n'est pas l'outil, c'est ce que son existence dit de l'API.
