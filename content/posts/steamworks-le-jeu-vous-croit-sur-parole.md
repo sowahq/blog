@@ -186,7 +186,29 @@ Trois hooks font le travail. Les deux derniers ne servent qu'à rattraper le che
 
 C'est peu. Et c'est bien le problème : la surface à couvrir pour faire mentir un jeu sur ce qu'il possède tient en une poignée de slots.
 
-## 5. La contre-mesure existe, et elle est documentée
+## 5. Le même principe, partout
+
+Deux slots dans une vtable, sur une API précise : vu comme ça, c'est anecdotique. Sauf que le schéma ne change jamais, et c'est ce qui rend le sujet intéressant. La grande majorité des cracks « classiques » reposent sur cette seule propriété.
+
+Le motif tient en trois lignes :
+
+1. Le programme pose une question sur ses propres droits — `BIsDlcInstalled`, `IsLicensed`, `checkActivation`, `user.isPro`, peu importe le nom.
+2. La réponse est calculée dans son processus.
+3. Le programme branche dessus.
+
+Tant que ces trois lignes sont vraies, il existe un endroit unique où la réponse peut être remplacée. Tout le reste n'est qu'une affaire de granularité :
+
+- **patcher le saut** (`jz` → `jmp`) : la plus ancienne méthode, on modifie le binaire sur disque ;
+- **hooker la fonction** : on ne touche plus au fichier, on repeint un pointeur en mémoire — c'est ce qu'on vient de faire ;
+- **remplacer toute la bibliothèque** : c'est le principe des émulateurs Steam, une réimplémentation de `steam_api64.dll` qui répond ce qu'on lui demande de répondre. Goldberg Emulator, le plus connu, est d'ailleurs publié en logiciel libre et sert aussi à tester un jeu en LAN sans client Steam.
+
+Trois techniques, trois époques, une seule hypothèse cassée : que le programme puisse se croire lui-même.
+
+L'asymétrie de coût explique le reste. Côté éditeur, produire une garantie réelle demande un serveur, une identité, un protocole, des tickets signés et une infrastructure à maintenir. Côté attaquant, il faut retourner un booléen. Il n'y a pas de rapport de force : une vérification côté client n'est jamais « un peu » contournée, elle l'est entièrement dès que quelqu'un s'y intéresse.
+
+Et symétriquement, ce qui résiste résiste toujours pour la même raison : la réponse n'est pas produite chez le joueur, ou bien ce qui est protégé n'est pas sur sa machine. Un DLC dont les fichiers ne sont pas livrés ne se débloque pas avec un booléen — il n'y a rien à débloquer. Une logique de jeu qui vit sur un serveur autoritatif ne peut pas se mentir à elle-même.
+
+## 6. La contre-mesure existe, et elle est documentée
 
 Le plus amusant dans cette histoire, c'est que rien de ce que je viens de décrire n'est un secret. La documentation Steamworks de Valve dit noir sur blanc que les vérifications côté client sont indicatives et qu'il ne faut pas s'y fier pour du contrôle d'accès.
 
@@ -203,7 +225,7 @@ Un shim comme celui-ci ne peut rien contre ça. Il ne casse pas de crypto — il
 
 Évidemment, ça suppose d'avoir un serveur, ce qui pour un jeu solo est une contrainte réelle. C'est tout le débat : la vérification côté client n'est pas un oubli, c'est un compromis assumé. Simplement, il faut savoir qu'on l'assume.
 
-## 6. Et le DRM dans tout ça ?
+## 7. Et le DRM dans tout ça ?
 
 On me posera la question, alors autant y répondre : non, ce qui précède n'a rien à voir avec le SteamStub, le wrapper de protection que Valve applique optionnellement aux exécutables.
 
@@ -213,7 +235,7 @@ Sa faiblesse structurelle est celle de tous les packers de ce type, et elle est 
 
 Je m'arrête là volontairement. Décrire l'architecture d'une protection relève de l'analyse ; fournir de quoi la contourner, c'est autre chose, et ce n'est pas l'objet de ce blog. La faiblesse des vérifications côté client, elle, est documentée par l'éditeur lui-même — on est sur un tout autre terrain.
 
-## 7. Ce qu'il faut en retenir
+## 8. Ce qu'il faut en retenir
 
 Une frontière de sécurité, c'est un endroit où les deux côtés ne se font pas confiance. Un appel de vtable dans votre propre processus, ce n'est pas ça. C'est un appel de fonction entre deux morceaux de code qui partagent tout : le même espace d'adressage, les mêmes droits, la même mémoire inscriptible.
 
