@@ -16,7 +16,7 @@ Rien ne part sur le réseau, rien n'est signé. Un appel, une valeur de retour, 
 
 Ce qui rend le sujet intéressant, c'est qu'il n'y a rien de cassé là-dedans. L'API fait exactement ce qu'elle documente. Ce sont les jeux qui s'en servent pour un usage auquel elle n'a jamais prétendu servir, et on va voir jusqu'où ça va.
 
-⚠️ Ce post n'explique pas comment débloquer des DLC. C'est une analyse de ce qu'une vérification de propriété côté client garantit, de ce qu'elle ne garantit pas, et de la façon correcte de la faire. ⚠️
+> ⚠️ **Ce post n'explique pas comment débloquer des DLC.** C'est une analyse de ce qu'une vérification de propriété **côté client** garantit, de ce qu'elle ne garantit pas, et de la façon correcte de la faire. ⚠️
 
 # 1. Comment un jeu demande « est-ce que je possède ça ? »
 
@@ -32,7 +32,7 @@ if (SteamApps()->BIsDlcInstalled(1234560)) {
 }
 ```
 
-`SteamApps()` est un accesseur inline du SDK. Sous le capot, il récupère son pointeur d'interface via une fonction usine (factory) exportée par `steam_api64.dll`, `SteamInternal_FindOrCreateUserInterface`.
+`SteamApps()` est un accesseur inline du SDK. Sous le capot, il récupère son pointeur d'interface via une **fonction usine** (factory) exportée par `steam_api64.dll`, `SteamInternal_FindOrCreateUserInterface`.
 
 L'API plate (la couche C générée au-dessus des interfaces C++, celle qu'utilisent les bindings pour C#, Godot et compagnie) arrive au même endroit :
 
@@ -59,11 +59,11 @@ Ici, `ISteamApps` ne vient pas de la factory exportée. C'est `ISteamClient` qui
 
 # 2. Tout se passe chez vous
 
-Dans les deux cas, la question et la réponse circulent entre deux morceaux de code chargés dans le même processus, le vôtre. Il n'y a ni paquet réseau ni frontière de privilège entre les deux, seulement un `call` et un `ret`.
+Dans les deux cas, la question et la réponse circulent entre deux morceaux de code chargés dans [le même processus, le vôtre]{.text-red-600.font-semibold}. Il n'y a ni paquet réseau ni frontière de privilège entre les deux, seulement un `call` et un `ret`.
 
 ## 2.1 Une interface Steamworks, c'est une vtable
 
-`ISteamApps` est une classe C++ abstraite. En mémoire, un pointeur d'interface pointe vers une structure dont le premier champ pointe vers une table de pointeurs de fonctions, la vtable.
+`ISteamApps` est une classe C++ abstraite. En mémoire, un pointeur d'interface pointe vers une structure dont le premier champ pointe vers une table de pointeurs de fonctions, la **vtable**.
 
 L'appel `apps->BIsDlcInstalled(1234560)` se compile en quelque chose comme :
 
@@ -99,7 +99,7 @@ Deux exports de la vraie `steam_api64.dll` nous intéressent, et il faut les dis
 - `SteamInternal_FindOrCreateUserInterface(HSteamUser, const char*)`, celle que finissent par appeler `SteamApps()`, `SteamUtils()` et les autres accesseurs ;
 - `SteamInternal_CreateInterface(const char*)`, celle qui sert notamment à obtenir `ISteamClient`, l'interface racine de la section 1.2.
 
-On les accroche avec MinHook, et le principe est le même dans les deux cas :
+On les accroche avec [MinHook](https://github.com/TsudaKageyu/minhook), et le principe est le même dans les deux cas :
 
 ```cpp
 static void* (__cdecl* real_FindOrCreateUserInterface)(int32_t, const char*) = nullptr;
@@ -114,7 +114,7 @@ static void* __cdecl my_FindOrCreateUserInterface(int32_t user, const char* vers
 }
 ```
 
-Au moment où notre DLL est chargée, `steam_api64.dll` n'est peut-être pas encore mappée, et l'ordre de chargement ne nous appartient pas. Faire quoi que ce soit de sérieux depuis `DllMain` est une mauvaise idée : on y est sous le loader lock, où beaucoup d'appels Win32 se figent ou se comportent mal.
+Au moment où notre DLL est chargée, `steam_api64.dll` n'est peut-être pas encore mappée, et l'ordre de chargement ne nous appartient pas. Faire quoi que ce soit de sérieux depuis `DllMain` est une mauvaise idée : on y est sous le **loader lock**, où beaucoup d'appels Win32 se figent ou se comportent mal.
 
 La solution habituelle est de lancer un thread qui attend l'apparition du module, avec une limite.
 
@@ -183,7 +183,7 @@ void on_new_interface(void* iface, std::string_view version) {
 
 # 4. Combien de hooks, au juste ?
 
-Les numéros de slot ne se devinent pas, ils se lisent dans le header du SDK, où l'ordre de déclaration des méthodes virtuelles est l'ordre de la vtable.
+Les numéros de slot ne se devinent pas, ils se lisent dans le header du SDK, où l'ordre de déclaration des méthodes virtuelles est l'ordre de la vtable. La [documentation de `ISteamApps`](https://partner.steamgames.com/doc/api/ISteamApps) décrit ce que fait chaque méthode, mais c'est le header qui donne l'ordre.
 
 ```cpp
 // isteamapps.h, STEAMAPPS_INTERFACE_VERSION008
@@ -207,7 +207,7 @@ On compte, et on obtient les index ci-dessous. Ils valent pour les versions d'in
 | `ISteamClient` | 017 | 9 | `GetISteamUtils` | plomberie |
 | `ISteamClient` | 017 | 15 | `GetISteamApps` | plomberie |
 
-Trois hooks font le travail. Les deux derniers rattrapent le chemin de la section 1.2 : ces interfaces ne passent jamais par les factories, il faut les attraper à leur sortie d'usine.
+**Trois hooks** font le travail. Les deux derniers rattrapent le chemin de la section 1.2 : ces interfaces ne passent jamais par les factories, il faut les attraper à leur sortie d'usine.
 
 La surface à couvrir pour faire mentir un jeu sur ce qu'il possède tient donc en une poignée de slots.
 
@@ -229,22 +229,26 @@ Tant que ces trois lignes sont vraies, il existe un endroit unique où la répon
 
 Les trois cassent la même hypothèse, celle du programme qui se croit lui-même.
 
-L'asymétrie de coût fait le reste. Côté éditeur, une garantie réelle demande un serveur, une identité, un protocole, des tickets signés et une infrastructure à maintenir. Côté attaquant, il faut retourner un booléen. Une vérification côté client n'est donc jamais à moitié contournée, elle l'est entièrement dès que quelqu'un s'y intéresse.
+L'asymétrie de coût fait le reste. Côté éditeur, une garantie réelle demande un serveur, une identité, un protocole, des tickets signés et une infrastructure à maintenir. Côté attaquant, il faut [retourner un booléen]{.text-red-600.font-semibold}. Une vérification côté client n'est donc jamais à moitié contournée, elle l'est entièrement dès que quelqu'un s'y intéresse.
 
 Ce qui résiste résiste pour la raison inverse : la réponse n'est pas produite chez le joueur, ou ce qui est protégé n'est pas sur sa machine. Un DLC dont les fichiers ne sont pas livrés ne se débloque pas avec un booléen, il n'y a rien à débloquer. Une logique de jeu qui tourne sur un serveur autoritatif ne peut pas se mentir à elle-même.
 
 # 6. La contre-mesure existe, et elle est documentée
 
-Rien de ce que je viens de décrire n'est un secret. La documentation Steamworks dit noir sur blanc que les vérifications côté client sont indicatives et qu'il ne faut pas s'y fier pour du contrôle d'accès.
+Rien de ce que je viens de décrire n'est un secret. La page [User Authentication and Ownership](https://partner.steamgames.com/doc/features/auth) de Valve décrit la vérification comme un aller-retour vers le backend Steam, et la doc de la Web API est encore plus directe :
+
+> This MUST be called from a secure server, and can never be used directly by clients!
+>
+> Documentation Steamworks, `ISteamUserAuth/AuthenticateUserTicket`
 
 La bonne façon de faire tient en deux étapes :
 
-1. Le client demande un ticket d'authentification (`GetAuthTicketForWebApi`) et l'envoie à votre serveur.
-2. Votre serveur valide ce ticket auprès de la Web API Steam (`ISteamUserAuth/AuthenticateUserTicket`), puis vérifie la propriété avec `ISteamUser/CheckAppOwnership`.
+1. Le client demande un ticket d'authentification (`GetAuthTicketForWebApi`) et l'envoie à **votre** serveur.
+2. Votre serveur valide ce ticket auprès de la Web API Steam ([`ISteamUserAuth/AuthenticateUserTicket`](https://partner.steamgames.com/doc/webapi/ISteamUserAuth)), puis vérifie la propriété avec [`ISteamUser/CheckAppOwnership`](https://partner.steamgames.com/doc/webapi/ISteamUser).
 
 ![Vérification côté client contre vérification côté serveur](/blog-img/steamworks-le-jeu-vous-croit-sur-parole/04-client-vs-serveur.png)
 
-Cette fois, la réponse est produite par un serveur de Valve, signée, puis consommée par un serveur à vous. Le processus du joueur ne fait plus que transporter le ticket. Il peut mentir tant qu'il veut sur ce qu'il croit posséder, personne ne l'écoute.
+Cette fois, la réponse est [produite par un serveur de Valve, signée]{.text-emerald-600.font-semibold}, puis consommée par un serveur à vous. Le processus du joueur ne fait plus que transporter le ticket. Il peut mentir tant qu'il veut sur ce qu'il croit posséder, personne ne l'écoute.
 
 Un shim comme celui-ci ne peut rien contre ça, parce qu'il n'y a rien à casser : il répond à une question qu'on lui pose.
 
@@ -254,7 +258,7 @@ Un shim comme celui-ci ne peut rien contre ça, parce qu'il n'y a rien à casser
 
 On me posera la question, alors autant y répondre tout de suite : non, ce qui précède n'a rien à voir avec le SteamStub, le wrapper de protection que Valve applique optionnellement aux exécutables.
 
-Ce sont deux étages différents. Le SteamStub est un packer. Il chiffre l'exécutable, ajoute une section `.bind` qui devient le point d'entrée, et déchiffre le vrai code en mémoire au lancement. Il embarque les protections habituelles de ce genre de dispositif, détection de débogueur, mesures de temps d'exécution, contrôles d'intégrité.
+Ce sont deux étages différents. Le SteamStub est un **packer**. Il chiffre l'exécutable, ajoute une section `.bind` qui devient le point d'entrée, et déchiffre le vrai code en mémoire au lancement. Il embarque les protections habituelles de ce genre de dispositif, détection de débogueur, mesures de temps d'exécution, contrôles d'intégrité.
 
 Sa faiblesse est celle de tous les packers de ce type, et elle est connue depuis toujours : à un instant donné, le code déchiffré se trouve en mémoire, en clair, parce qu'il faut bien que le processeur puisse l'exécuter. Toute la protection consiste à rendre cet instant difficile à observer.
 
@@ -262,7 +266,7 @@ Je m'arrête là volontairement. Décrire l'architecture d'une protection relèv
 
 # Conclusion
 
-Une frontière de sécurité, c'est un endroit où les deux côtés ne se font pas confiance. Un appel de vtable dans votre propre processus ne remplit pas cette condition, et c'est pour ça que trois hooks suffisent. Un jeu qui vérifie ses droits côté client exprime une préférence, et espère qu'on la respecte.
+Une frontière de sécurité, c'est un endroit où les deux côtés ne se font pas confiance. Un appel de vtable dans votre propre processus ne remplit pas cette condition, et c'est pour ça que trois hooks suffisent. Un jeu qui vérifie ses droits **côté client** exprime une préférence, et espère qu'on la respecte.
 
 Si vous concevez ce genre de vérification, la question à se poser est de savoir qui produit la réponse, et si vous pouvez la vérifier sans faire confiance à celui qui vous l'apporte.
 

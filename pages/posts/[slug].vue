@@ -16,7 +16,7 @@
       <img :src="post.image" alt="Post image" class="w-full h-auto object-contain mt-4 rounded-lg" />
     </header>
 
-    <article class="prose prose-strong:text-purple-600 prose-code:bg-yellow-300 prose-code:text-purple-600 prose-code:border prose-code:border-purple-600 prose-code:rounded prose-code:px-1 [&_pre_code]:!bg-transparent [&_pre_code]:!text-inherit [&_pre_code]:!rounded-none [&_pre_code]:!px-0 [&_pre_code]:!border-0 prose-code:before:content-none prose-code:after:content-none prose-pre:!px-4 prose-pre:!py-3 prose-pre:!bg-[#1a1b26] max-w-full prose-hr:border-gray-600 prose-li:marker:text-black font-poppins text-lg leading-relaxed">
+    <article class="prose prose-strong:text-purple-600 prose-a:text-purple-600 prose-a:no-underline hover:prose-a:underline prose-blockquote:border-purple-400 prose-blockquote:text-gray-700 prose-code:bg-yellow-300 prose-code:text-purple-600 prose-code:border prose-code:border-purple-600 prose-code:rounded prose-code:px-1 [&_pre_code]:!bg-transparent [&_pre_code]:!text-inherit [&_pre_code]:!rounded-none [&_pre_code]:!px-0 [&_pre_code]:!border-0 prose-code:before:content-none prose-code:after:content-none prose-pre:!px-4 prose-pre:!py-3 prose-pre:!bg-[#1a1b26] max-w-full prose-hr:border-gray-600 prose-li:marker:text-black font-poppins text-lg leading-relaxed">
       <ContentRendererMarkdown :value="post">
         <template #empty>
           <p>Aucun contenu pour cet article.</p>
