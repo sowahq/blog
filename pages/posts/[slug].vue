@@ -1,5 +1,5 @@
 <template>
-  <div v-if="post" class="max-w-4xl mx-auto px-8 pb-12 font-poppins">
+  <div v-if="post" class="max-w-4xl xl:max-w-6xl mx-auto px-8 pb-12 font-poppins">
     <div class="mt-8 mb-4">
       <NuxtLink to="/" class="inline-flex items-center gap-2 text-purple-600 hover:text-purple-800 transition-colors font-minecraft">
         <LucideArrowLeft :size="18" />
@@ -16,19 +16,26 @@
       <img :src="post.image" alt="Post image" class="w-full h-auto object-contain mt-4 rounded-lg" />
     </header>
 
-    <article class="prose prose-strong:text-purple-600 prose-a:text-purple-600 prose-a:no-underline hover:prose-a:underline prose-blockquote:border-purple-400 prose-blockquote:text-gray-700 prose-code:bg-yellow-300 prose-code:text-purple-600 prose-code:border prose-code:border-purple-600 prose-code:rounded prose-code:px-1 [&_pre_code]:!bg-transparent [&_pre_code]:!text-inherit [&_pre_code]:!rounded-none [&_pre_code]:!px-0 [&_pre_code]:!border-0 prose-code:before:content-none prose-code:after:content-none prose-pre:!px-4 prose-pre:!py-3 prose-pre:!bg-[#1a1b26] max-w-full prose-hr:border-gray-600 prose-li:marker:text-black font-poppins text-lg leading-relaxed">
-      <ContentRendererMarkdown :value="post">
-        <template #empty>
-          <p>Aucun contenu pour cet article.</p>
-        </template>
-      </ContentRendererMarkdown>
-    </article>
+    <div class="flex flex-col xl:flex-row-reverse xl:items-start xl:gap-10">
+      <aside class="w-full mb-10 xl:mb-0 xl:w-72 xl:shrink-0 xl:sticky xl:top-8">
+        <Toc :body="post.body" />
+      </aside>
+
+      <article class="prose prose-headings:scroll-mt-8 prose-strong:text-purple-600 prose-a:text-purple-600 prose-a:no-underline hover:prose-a:underline prose-blockquote:border-purple-400 prose-blockquote:text-gray-700 prose-code:bg-yellow-300 prose-code:text-purple-600 prose-code:border prose-code:border-purple-600 prose-code:rounded prose-code:px-1 [&_pre_code]:!bg-transparent [&_pre_code]:!text-inherit [&_pre_code]:!rounded-none [&_pre_code]:!px-0 [&_pre_code]:!border-0 prose-code:before:content-none prose-code:after:content-none prose-pre:!px-4 prose-pre:!py-3 prose-pre:!bg-[#1a1b26] max-w-full prose-hr:border-gray-600 prose-li:marker:text-black font-poppins text-lg leading-relaxed min-w-0 flex-1">
+        <ContentRendererMarkdown :value="post">
+          <template #empty>
+            <p>Aucun contenu pour cet article.</p>
+          </template>
+        </ContentRendererMarkdown>
+      </article>
+    </div>
   </div>
 </template>
 
 <script lang="ts" setup>
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
+import Toc from '@/components/toc.vue';
 dayjs.locale('fr'); // TODO: move this to a global setup
 
 import hljs from 'highlight.js/lib/core';
