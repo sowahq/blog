@@ -155,3 +155,67 @@ La virtualisation déplace le combat : on ne protège plus son code, on protège
 C'est une technique coûteuse en performance, mais c'est aujourd'hui le rempart le plus solide contre le reverse engineering.
 
 Voilà, j'espère que ce tour d'horizon de l'obfuscation par virtualisation vous a plu ! Si vous voulez voir le code source de mon petit projet de virtualiseur en Rust, je l'open-sourcerai surement dans les prochaines semaines. En attendant, vous pouvez toujours vous amuser à créer votre propre VM pour protéger vos secrets les plus précieux. 😉
+
+# Références
+
+Le virtualiseur montré ici est le mien, mais ni la technique ni les attaques qui la visent ne sont nouvelles. Voici de quoi recouper.
+
+## Protections commerciales
+
+:::ref-grid
+::ref-card{url="https://vmpsoft.com/" title="VMProtect"}
+L'un des deux protecteurs cités en introduction, qui documente lui-même la virtualisation comme mode de protection.
+::
+
+::ref-card{url="https://www.oreans.com/Themida.php" title="Themida"}
+L'autre, sur le même principe de machine virtuelle embarquée.
+::
+
+::ref-card{url="https://en.wikipedia.org/wiki/Denuvo" title="Denuvo"}
+Vue d'ensemble. L'éditeur ne publie aucun détail technique : tout ce qui circule vient d'analyses tierces.
+::
+:::
+
+## Travaux académiques
+
+:::ref-grid
+::ref-card{url="https://www.usenix.org/legacy/event/woot09/tech/full_papers/rolles.pdf" title="Rolles — Unpacking Virtualization Obfuscators (WOOT '09)"}
+La référence sur la structure fetch/decode/execute d'une VM d'obfuscation, et sur la façon de la retrouver dans un binaire.
+::
+
+::ref-card{url="https://www.usenix.org/conference/usenixsecurity17/technical-sessions/presentation/blazytko" title="Syntia (USENIX Security 2017)"}
+La dévirtualisation par synthèse de programmes : reconstruire la sémantique d'un handler sans le lire.
+::
+
+::ref-card{url="https://www.usenix.org/conference/usenixsecurity21/presentation/liu-binbin" title="MBA-Blast (USENIX Security 2021)"}
+La simplification automatique des identités MBA de la section 3.2.
+::
+:::
+
+## Outils de la contre-attaque
+
+:::ref-grid
+::ref-card{url="https://triton-library.github.io/" title="Triton"}
+Moteur d'exécution symbolique et de taint analysis, cité en section 5.
+::
+
+::ref-card{url="https://angr.io/" title="angr"}
+Framework d'analyse binaire, exécution symbolique incluse.
+::
+
+::ref-card{url="https://hex-rays.com/ida-pro" title="IDA Pro"}
+Le décompilateur qu'on cherche à rendre aveugle en section 3.
+::
+:::
+
+## Sur ce blog
+
+:::ref-grid
+::ref-card{url="/posts/les-nanomites-d-armadillo" title="Les Nanomites d'Armadillo"}
+L'ancêtre : casser le graphe de flot un saut à la fois, au lieu du code entier.
+::
+
+::ref-card{url="/posts/steamworks-le-jeu-vous-croit-sur-parole" title="Steamworks : le jeu vous croit sur parole"}
+L'autre bout du spectre : la vérification qu'on ne protège pas du tout.
+::
+:::

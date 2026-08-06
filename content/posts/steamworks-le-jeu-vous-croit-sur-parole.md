@@ -271,3 +271,67 @@ Une frontière de sécurité, c'est un endroit où les deux côtés ne se font p
 Si vous concevez ce genre de vérification, la question à se poser est de savoir qui produit la réponse, et si vous pouvez la vérifier sans faire confiance à celui qui vous l'apporte.
 
 Voilà, j'espère que ce tour d'horizon vous aura éclairé sur un coin de Steamworks dont on parle assez peu. Les extraits de code sont volontairement réduits à l'os : ce qui compte ici, ce n'est pas l'outil, c'est ce que son existence dit de l'API.
+
+# Références
+
+Tout ce qui est affirmé plus haut se recoupe avec de la documentation publique. Les numéros de slot, eux, se lisent dans les headers du SDK, pas dans la doc en ligne.
+
+## Documentation Steamworks
+
+:::ref-grid
+::ref-card{url="https://partner.steamgames.com/doc/api/steam_api" title="Steamworks API Overview"}
+Les accesseurs inline (`SteamApps()`, `SteamUtils()`) et l'initialisation du SDK. Section 1.
+::
+
+::ref-card{url="https://partner.steamgames.com/doc/api/ISteamApps" title="ISteamApps"}
+Le rôle de `BIsSubscribedApp` et `BIsDlcInstalled`. La doc ne donne pas l'ordre des méthodes virtuelles.
+::
+
+::ref-card{url="https://partner.steamgames.com/downloads/list" title="SDK Steamworks"}
+`isteamapps.h`, la seule source qui fait foi pour les numéros de slot de la section 4.
+::
+
+::ref-card{url="https://partner.steamgames.com/doc/features/auth" title="User Authentication and Ownership"}
+Le circuit ticket → backend Steam décrit en section 6.
+::
+
+::ref-card{url="https://partner.steamgames.com/doc/webapi/ISteamUserAuth" title="ISteamUserAuth"}
+`AuthenticateUserTicket`, d'où vient la citation « This MUST be called from a secure server ».
+::
+
+::ref-card{url="https://partner.steamgames.com/doc/webapi/ISteamUser" title="ISteamUser"}
+`CheckAppOwnership`, la vérification de propriété côté serveur.
+::
+:::
+
+## Outillage et plateforme
+
+:::ref-grid
+::ref-card{url="https://github.com/TsudaKageyu/minhook" title="MinHook"}
+La bibliothèque de hooking utilisée en section 3.
+::
+
+::ref-card{url="https://learn.microsoft.com/en-us/cpp/build/x64-calling-convention" title="x64 calling convention"}
+Pourquoi le `this` arrive dans `RCX` en x64, et pas ailleurs. Section 3.2.
+::
+
+::ref-card{url="https://learn.microsoft.com/en-us/cpp/cpp/fastcall" title="__fastcall"}
+Le détail x86 qui impose le paramètre bidon `edx` dans les macros.
+::
+
+::ref-card{url="https://learn.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-best-practices" title="DLL Best Practices"}
+Ce qui est interdit sous loader lock, donc depuis `DllMain`. Section 3.1.
+::
+
+::ref-card{url="https://gitlab.com/Mr_Goldberg/goldberg_emulator" title="Goldberg Emulator"}
+La réimplémentation libre de `steam_api` citée en section 5. Plus maintenue par son auteur d'origine.
+::
+:::
+
+## Sur ce blog
+
+:::ref-grid
+::ref-card{url="/posts/l-obfuscation-via-la-virtualisation" title="L'obfuscation via la virtualisation"}
+L'étage au-dessus : quand ce n'est plus un booléen qu'on cache, mais le code entier.
+::
+:::

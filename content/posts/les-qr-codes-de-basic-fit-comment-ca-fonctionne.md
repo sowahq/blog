@@ -133,3 +133,55 @@ Le processus de génération et de validation des QR Codes de Basic Fit repose s
 L’application garantit que chaque QR Code est lié à l’utilisateur et à l’appareil qu’il a choisi pour accéder au club. Cela assure que seul cet appareil pourra être utilisé pour entrer, renforçant ainsi la sécurité.
 
 _(Et j’ai pu tester le processus par moi-même, et cela fonctionne parfaitement bien !)_
+
+# Références
+
+Le détail du format de QR Code vient de l'analyse de l'application ; le reste est documenté publiquement.
+
+## Outils utilisés
+
+:::ref-grid
+::ref-card{url="https://github.com/skylot/jadx" title="Jadx"}
+Décompilation de l'APK et repérage de `main.jsbundle`. Section 2.
+::
+
+::ref-card{url="https://www.charlesproxy.com" title="Charles Proxy"}
+Interception du trafic entre l'application et les serveurs. Section 3.
+::
+
+::ref-card{url="https://github.com/bongtrop/hbctool" title="hbctool"}
+Désassemblage et réassemblage du bytecode Hermes.
+::
+
+::ref-card{url="https://github.com/P1sec/hermes-dec" title="hermes-dec"}
+L'autre approche du même problème : décompilation du bytecode Hermes. Section 2.2.
+::
+:::
+
+## Technologies de l'application
+
+:::ref-grid
+::ref-card{url="https://reactnative.dev/docs/hermes" title="Hermes (React Native)"}
+Pourquoi `main.jsbundle` n'est pas du JavaScript lisible mais du bytecode compilé.
+::
+
+::ref-card{url="https://github.com/facebook/hermes" title="Dépôt du moteur Hermes"}
+Le format de bytecode lui-même, versionné et documenté dans les sources.
+::
+
+::ref-card{url="https://datatracker.ietf.org/doc/html/rfc6749" title="RFC 6749 — OAuth 2.0"}
+Le protocole d'authentification observé dans le trafic de l'application.
+::
+
+::ref-card{url="https://datatracker.ietf.org/doc/html/rfc7636" title="RFC 7636 — PKCE"}
+L'extension qui protège l'échange du code d'autorisation, visible en section 3.
+::
+:::
+
+## Sur ce blog
+
+:::ref-grid
+::ref-card{url="/posts/steamworks-le-jeu-vous-croit-sur-parole" title="Steamworks : le jeu vous croit sur parole"}
+Le même sujet côté PC : ce qu'une vérification faite chez le client garantit vraiment.
+::
+:::

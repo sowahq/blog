@@ -106,3 +106,75 @@ Les nanomites d'Armadillo sont un exemple fascinant de détournement des mécani
 Aujourd'hui, cette technique a évolué vers l'**obfuscation par virtualisation**, où ce n'est plus juste un saut qui est caché, mais l'intégralité du code, comme nous l'avons vu dans [notre précédent dossier](/posts/l-obfuscation-via-la-virtualisation).
 
 Le jeu du chat et de la souris continue !
+
+# Références
+
+Armadillo est un produit des années 2000, et son éditeur n'existe plus. Ce qui reste vérifiable, c'est l'API Windows sur laquelle toute la technique repose.
+
+## Le protecteur
+
+:::ref-grid
+::ref-card{url="https://web.archive.org/web/2010/http://www.siliconrealms.com/" title="Silicon Realms — SoftwarePassport / Armadillo"}
+Le site de l'éditeur, via Internet Archive : le domaine a changé de mains depuis.
+::
+
+::ref-card{url="https://forum.tuts4you.com/" title="Tuts4You"}
+Le forum où se trouve l'essentiel des analyses publiques d'Armadillo de l'époque, nanomites comprises.
+::
+:::
+
+## Les API Windows utilisées
+
+:::ref-grid
+::ref-card{url="https://learn.microsoft.com/en-us/windows/win32/procthread/process-creation-flags" title="Process creation flags"}
+`DEBUG_PROCESS`, le flag qui fait du Parent le débogueur de l'Enfant. Section 1.
+::
+
+::ref-card{url="https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-createprocessa" title="CreateProcess"}
+L'appel qui lance la seconde instance sous débogage.
+::
+
+::ref-card{url="https://learn.microsoft.com/en-us/windows/win32/debug/debugging-events" title="Debugging Events"}
+`EXCEPTION_DEBUG_EVENT` et le code `EXCEPTION_BREAKPOINT` levé par `INT 3`.
+::
+
+::ref-card{url="https://learn.microsoft.com/en-us/windows/win32/api/debugapi/nf-debugapi-waitfordebugevent" title="WaitForDebugEvent"}
+La boucle d'attente côté Parent, étape 4 de la section 2.2.
+::
+
+::ref-card{url="https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getthreadcontext" title="GetThreadContext"}
+La lecture des registres et des flags de l'Enfant suspendu.
+::
+
+::ref-card{url="https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setthreadcontext" title="SetThreadContext"}
+La réécriture d'`EIP`, qui remplace le saut supprimé à la protection.
+::
+
+::ref-card{url="https://learn.microsoft.com/en-us/windows/win32/api/debugapi/nf-debugapi-debugactiveprocess" title="DebugActiveProcess"}
+L'attachement d'un débogueur, et l'échec attendu quand le processus en a déjà un.
+::
+:::
+
+## Outils
+
+:::ref-grid
+::ref-card{url="https://github.com/x64dbg/x64dbg" title="x64dbg"}
+Le débogueur qui se heurte au Debug Blocker de la section 1.
+::
+
+::ref-card{url="https://hex-rays.com/ida-pro" title="IDA Pro"}
+Le point de vue statique, celui que les nanomites cassent.
+::
+:::
+
+## Sur ce blog
+
+:::ref-grid
+::ref-card{url="/posts/l-obfuscation-via-la-virtualisation" title="L'obfuscation via la virtualisation"}
+La suite logique de cette technique : cacher le code entier, plus seulement un saut.
+::
+
+::ref-card{url="/posts/steamworks-le-jeu-vous-croit-sur-parole" title="Steamworks : le jeu vous croit sur parole"}
+Le cas inverse : une vérification qu'aucune protection ne défend.
+::
+:::
