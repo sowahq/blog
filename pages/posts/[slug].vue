@@ -13,7 +13,7 @@
       <p class="text-gray-600 space-y-1 font-minecraft">Tags: <span v-for="tag in post.tags" :key="tag"
           class="inline-block bg-gray-200 rounded-full px-3 py-1 text-sm font-semibold text-white bg-purple-400 mr-2">{{
           tag }}</span></p>
-      <img :src="post.image" alt="Post image" class="w-full h-auto object-contain mt-4 rounded-lg" />
+      <ZoomableImage :src="post.image" :alt="post.title" class="w-full h-auto object-contain mt-4 rounded-lg" />
     </header>
 
     <div class="flex flex-col xl:flex-row-reverse xl:items-start xl:gap-10">
@@ -36,6 +36,7 @@
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
 import Toc from '@/components/toc.vue';
+import ZoomableImage from '@/components/zoomable-image.vue';
 dayjs.locale('fr'); // TODO: move this to a global setup
 
 import hljs from 'highlight.js/lib/core';
