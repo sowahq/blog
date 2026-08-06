@@ -1,6 +1,6 @@
 <template>
   <nav v-if="entries.length" aria-label="Sommaire"
-    class="bg-white shadow-pixel-art p-6 font-poppins text-base xl:max-h-[calc(100vh-6rem)] xl:overflow-y-auto">
+    class="bg-white shadow-pixel-art p-6 font-poppins text-base max-h-72 overflow-y-auto xl:max-h-[calc(100vh-6rem)]">
     <h2 class="font-minecraft text-lg text-purple-500 mb-4 flex items-center gap-2">
       <LucideList :size="18" />
       Sommaire
