@@ -114,10 +114,6 @@ Java.perform(() => {
 
 L'UUID renvoyé par le SDK est exactement celui décodé de l'annonce BLE en section 1. C'est bien mon frigo, et j'ai son `local_key`.
 
-## 4.1. Pourquoi j'aime bien
-
-Ce que j'aime dans cette approche, c'est qu'il n'y a rien à casser. Pas besoin de patcher l'app, de reverser la signature ou de me battre avec la crypto. Le SDK sait déjà tout faire, avec mes identifiants et sur mon compte. Je le laisse bosser, je lis la clé à la sortie, et voilà.
-
 # 5. Parler au frigo
 
 Avec le `local_key`, le `device_id` et l'UUID, je peux enfin ouvrir une session BLE authentifiée depuis mon Mac. Le handshake Tuya BLE se déroule comme ça :
@@ -177,7 +173,7 @@ Décompilation de l'APK pour retrouver les classes du SDK et le flux de login.
 ::
 
 ::ref-card{url="https://github.com/nalajcie/tuya-sign-hacking" title="tuya-sign-hacking"}
-Le point de départ sur la signature Tuya et le token caché dans t_s.bmp. Section 3.
+Le point de départ sur la signature Tuya et son token caché dans les assets. Section 3.
 ::
 :::
 
