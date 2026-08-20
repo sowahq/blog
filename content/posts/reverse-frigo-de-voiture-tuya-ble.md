@@ -18,7 +18,7 @@ Donc j'ai fait ce que je fais toujours dans ces cas-là : j'ai voulu comprendre 
 
 Ce post raconte le pourquoi et le comment. Comment un frigo à 200 balles se retrouve à causer un protocole chiffré de Tuya, pourquoi la clé pour le piloter n'est ni devinable ni brute-forçable, et comment je l'ai quand même récupérée sans cracker le paywall ni la protection anti-tamper de l'app.
 
-⚠️ On parle de **mon** frigo, lié à **mon** compte. C'est de l'interopérabilité avec mon propre matériel, pas un tuto pour taper le voisin. Rien ici ne contourne un paiement : la clé qu'on récupère existe déjà dans mon compte, je vais juste la chercher. ⚠️
+⚠️ On parle de **mon** frigo, lié à **mon** compte. C'est de l'interopérabilité avec mon propre matériel, pas un tuto pour taper le voisin. Aucune protection technique n'a été contournée : ni le paywall, ni l'anti-tamper de l'app. La clé que je récupère existe déjà dans mon compte, je la lis avec mes propres identifiants, c'est tout. ⚠️
 
 # 1. Reconnaissance : qui parle sur le Bluetooth ?
 
@@ -73,25 +73,13 @@ Première idée, la mauvaise : patcher l'app pour virer le paywall et lire la cl
 
 Un reverse, ce n'est jamais une ligne droite. Voici les pistes que j'ai suivies avant de trouver la bonne. Elles expliquent pourquoi j'ai fini par prendre ce chemin-là.
 
-## 3.1. Le token caché dans une image
+## 3.1. La signature cloud
 
-Le SDK Tuya signe ses requêtes cloud en HMAC-SHA256 avec une clé composée de trois morceaux : le SHA256 du certificat de l'app, l'`appSecret` (en clair dans le manifest), et un **token planqué dans un fichier `assets/t_s.bmp`**. Ce token s'extrait de l'image par un calcul matriciel documenté par [nalajcie](https://github.com/nalajcie/tuya-sign-hacking).
+Pour parler à son cloud, le SDK Tuya signe chaque requête. La clé de signature est composée de plusieurs morceaux propres à l'app, dont un token stocké de façon obfusquée dans les assets. Le sujet est déjà documenté publiquement par [nalajcie](https://github.com/nalajcie/tuya-sign-hacking), sur une version plus ancienne du SDK.
 
-Sauf que l'encodage de l'image a changé depuis cette recherche de 2020 : le programme de référence renvoie n'importe quoi sur le `t_s.bmp` de mon app. Reverser le nouvel encodage, c'est reverser une lib native.
+Sur mon app, l'obfuscation a changé. Mais le passage que je préfère, c'est qu'on n'a pas besoin de la reverser : la lib native du SDK sait déjà lire ses propres secrets. On la fait tourner, on lui demande, elle répond. J'assemble la clé de signature, je reconstruis une requête côté Python, et je l'envoie.
 
-Sauf que — et c'est le moment que je préfère — cette même lib native **exporte sa propre fonction de décodage** : `read_keys_from_file`. Plutôt que de reverser le format, je charge la lib du SDK sur un émulateur et je lui demande de décoder son image elle-même :
-
-```javascript
-// Frida : la lib décode son propre token
-const fn = new NativeFunction(
-  Module.load(libPath).getExportByName("read_keys_from_file"),
-  "int", ["pointer", "pointer", "pointer", "pointer"]
-);
-fn(appId, outKeys, outCount, bmpPath);
-// -> a0t96lgz3xpzed97rsp8h95gesaen9hs
-```
-
-Le token sort en trente secondes. J'assemble la clé HMAC complète, je reconstruis la signature côté Python, et... le serveur me renvoie `SING_VALIDATE_FALED_4`. La signature est refusée.
+Le serveur renvoie `SING_VALIDATE_FALED_4` : signature refusée. Le calcul exact ne colle pas.
 
 ## 3.2. La signature n'est pas un simple HMAC
 
@@ -126,9 +114,9 @@ Java.perform(() => {
 
 L'UUID renvoyé par le SDK est exactement celui décodé de l'annonce BLE en section 1. C'est bien mon frigo, et j'ai son `local_key`.
 
-## 4.1. Pourquoi c'est propre
+## 4.1. Pourquoi j'aime bien
 
-Cette méthode ne touche à rien de ce que je refusais de toucher. Je ne patche pas le paywall, je ne défais pas la protection anti-tamper (l'app payante est protégée par PairIP, je n'y touche pas), je ne reverse pas la signature. Je me connecte à **mon** compte avec **mes** identifiants, et je lis une clé qui m'appartient. Le SDK fait tout le sale boulot cryptographique ; moi je regarde le résultat.
+Ce que j'aime dans cette approche, c'est qu'il n'y a rien à casser. Pas besoin de patcher l'app, de reverser la signature ou de me battre avec la crypto. Le SDK sait déjà tout faire, avec mes identifiants et sur mon compte. Je le laisse bosser, je lis la clé à la sortie, et voilà.
 
 # 5. Parler au frigo
 
@@ -200,7 +188,7 @@ Le point de départ sur la signature Tuya et le token caché dans t_s.bmp. Secti
 Le déroulé exact du handshake et l'encodage des datapoints, que j'ai porté en TS. Section 5.
 ::
 
-::ref-card{url="https://developer.tuya.com/en/docs/iot-device-dev/BLE-communication" title="Tuya — communication BLE"}
+::ref-card{url="https://developer.tuya.com/en/docs/iot-device-dev/BLE-communication" title="Tuya : communication BLE"}
 La doc officielle du protocole BLE côté device.
 ::
 :::
