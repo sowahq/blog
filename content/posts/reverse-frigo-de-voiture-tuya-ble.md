@@ -1,6 +1,6 @@
 ---
 title: "J'ai reverse un frigo de voiture (oui.)"
-description: "J'ai téléchargé la mauvaise app, mon frigo s'est verrouillé sur une appkey Tuya payante, et son Bluetooth refusait de se connecter. Alors j'ai reverse le protocole, récupéré la clé du frigo sans cracker le paywall, et lui ai parlé moi-même."
+description: "J'ai téléchargé la mauvaise app à l'install, et mon frigo de voiture s'est retrouvé coincé sur un compte Tuya payant. Alors j'ai reverse son Bluetooth pour le piloter moi-même."
 pubDate: 08/20/2026
 image: /blog-img/reverse-frigo-de-voiture-tuya-ble/header.png
 tags: ["reverse engineering", "bluetooth", "tuya", "frida", "react native"]
