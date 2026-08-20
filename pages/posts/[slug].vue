@@ -45,6 +45,7 @@ import cpp from 'highlight.js/lib/languages/cpp';
 import c from 'highlight.js/lib/languages/c';
 import armasm from 'highlight.js/lib/languages/armasm';
 import json from 'highlight.js/lib/languages/json';
+import python from 'highlight.js/lib/languages/python';
 import "highlight.js/styles/tokyo-night-dark.min.css";
 
 definePageMeta({
@@ -127,6 +128,7 @@ onMounted(() => {
   hljs.registerLanguage('cpp', cpp);
   hljs.registerLanguage('c', c);
   hljs.registerLanguage('asm', armasm);
+  hljs.registerLanguage('python', python);
 
   hljs.highlightAll();
 });
